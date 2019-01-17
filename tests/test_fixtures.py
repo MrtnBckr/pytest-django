@@ -704,3 +704,63 @@ def test_mail_message_dns_patching_can_be_skipped(django_testdir):
         ["*test_mailbox_inner*", "django_mail_dnsname_mark", "PASSED*"]
     )
     assert result.ret == 0
+
+
+@pytest.mark.django_project(
+    extra_settings="""
+    INSTALLED_APPS = [
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'pytest_django_test.app',
+    ]
+    CYPRESS_RUN_COMMAND = './node_modules/.bin/cypress run'
+    """
+)
+def test_cypress_test(django_testdir):
+    django_testdir.create_app_file(
+        """
+        describe('Edit name if item', () => {
+            it('edits the name of an item', () => {
+                cy.visit('/objects/' + Cypress.env('object_id'));
+                const new_value = Cypress.env('new_value');
+                cy.get('input#id_value').clear().type(new_value).should(
+                    'have.value', new_value.toString());
+                cy.get('input[name="_continue"]').click();
+                cy.get('input#id_value').should('have.value', new_value.toString())
+            })
+        });
+        """,
+        "cypress_specs/edit_item_name_spec.js",
+    )
+
+    django_testdir.create_test_module(
+        """
+        import pytest
+        
+        from pytest_django_test.app.models import Item
+        
+
+        @pytest.mark.django_db
+        def test_item_name_edit(cypress_test):
+            item = Item(name='ABC')
+            item.save()
+            
+            new_name = 'DEF'
+            cypress_test(
+                spec='edit_name_spec.js',
+                env={
+                    'item_id': item.pk,
+                    'new_name': new_name,
+                }
+            )
+            
+            item.refresh_from_db()
+            assert item.name == new_name
+        """
+    )
+
+    result = django_testdir.runpytest_subprocess("-s")
+    result.stdout.fnmatch_lines(["*1 passed*"])
+    assert result.ret == 0

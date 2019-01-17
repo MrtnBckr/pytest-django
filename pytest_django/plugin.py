@@ -14,6 +14,7 @@ import types
 import pytest
 
 from .django_compat import is_django_unittest  # noqa
+from .fixtures import cypress_test  # noqa
 from .fixtures import django_assert_num_queries  # noqa
 from .fixtures import django_assert_max_num_queries  # noqa
 from .fixtures import django_db_setup  # noqa

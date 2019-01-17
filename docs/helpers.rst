@@ -381,3 +381,49 @@ Clearing of mail.outbox
 ``mail.outbox`` will be cleared for each pytest, to give each new test an empty
 mailbox to work with. However, it's more "pytestic" to use the ``mailoutbox`` fixture described above
 than to access ``mail.outbox``.
+
+
+.. fixture:: cypress_test
+
+``cypress_test``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. py:function:: cypress_test(spec, video, env)
+
+  :param str spec: path to spec to execute
+  :param bool video: whether to capture video of test run
+  :param dict env: optional env parameters to pass to the spec
+
+This fixture allows to execute a cypress spec with a well prepared environment.
+
+Example
+"""""""
+test_objects.py::
+
+    def test_value_edit(cypress_test):
+        object_1 = ObjectFactory.create(
+            value=100,
+        )
+
+        new_value = 200
+        cypress_test(
+            'edit_value_spec.js',
+            env={
+                'object_id': object_1.id,
+                'new_value': new_value,
+            },
+        )
+        object_1.refresh_from_db()
+        assert object_1.value == new_value
+
+edit_value_spec.js::
+
+    describe('Edit value', () => {
+        it('Visits a site', () => {
+            cy.visit('/objects/' + Cypress.env('object_id'));
+            const new_value = Cypress.env('new_value');
+            cy.get('input#id_value').clear().type(new_value).should('have.value', new_value.toString());
+            cy.get('input[name="_continue"]').click();
+            cy.get('input#id_value').should('have.value', new_value.toString())
+        })
+    });
